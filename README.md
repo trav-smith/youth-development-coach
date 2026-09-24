@@ -48,17 +48,14 @@ The same reasoning architecture has been tested across baseball and tennis witho
 
 ## AI Product Architecture
 
-User Observation  
-↓  
-Streamlit UI  
-↓  
-Python Application  
-↓  
-Anthropic API / Claude  
-↓  
-Pydantic Structured Output  
-↓  
-Structured Development Analysis
+```mermaid
+flowchart LR
+    A[Parent / Coach] --> B[Streamlit UI]
+    B --> C[Python Application]
+    C --> D[Anthropic API / Claude]
+    D --> E[Pydantic Structured Output]
+    E --> F[Development Analysis]
+```
 
 The application uses a defined data contract rather than displaying unrestricted model prose. Observations, hypotheses, development priorities, recommendations, coaching cues, and tracking items are represented as structured objects with stable IDs and relationships.
 

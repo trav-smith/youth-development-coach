@@ -176,23 +176,74 @@ These quantities were not provided by the user and were not necessarily evidence
 Desired behavior: Avoid unsupported precision.
 These examples should become initial cases in a formal evaluation suite rather than relying solely on manual prompt testing.
 
-11. v0.2 — Longitudinal Athlete History
-Next planned milestone
-The primary limitation of v0.1 is that each analysis is independent. The system does not remember previous sessions for an athlete.
-v0.2 should introduce persistent athlete and session history.
-Conceptual architecture:
-Athlete Profile → Sessions → Stored Evidence → Relevant Historical Context → AI Analysis → Updated Hypotheses
-The system should be capable of distinguishing:
-One-time observations
-Recurring patterns
-Previously observed hypotheses
-Evidence supporting a hypothesis
-Evidence contradicting a hypothesis
-Changes following practice or intervention
-Example:
-Rather than treating “late on fastballs” as an isolated report, the system could eventually identify:
-Similar fastball-timing observations have now appeared across three games, while the previously observed behind-in-count behavior has not consistently repeated.
-The purpose of persistence is not simply to give Claude more text. It is to improve the quality of evidence available to the reasoning system.
+11.v0.2 — Athlete History & Longitudinal Reasoning
+
+### Status
+Complete
+
+### Objective
+Extend the v0.1 single-session reasoning prototype into a persistent athlete development system that can reason across observations over time.
+
+### Capabilities
+
+- Create and persist athlete profiles
+- Select existing athletes in the product UI
+- Store dated game and practice observations
+- Maintain separate records for human-provided evidence and AI-generated analysis
+- Retrieve prior observations for a specific athlete
+- Filter historical evidence based on session date
+- Provide prior human observations to the AI as longitudinal context
+- Compare current observations with historical evidence
+- Identify repeated patterns, contradictory evidence, and context-specific differences
+- Store structured AI analysis separately from source observations
+- Display persistent athlete session history in the product UI
+
+### Persistence Architecture
+
+The prototype uses SQLite for local relational persistence.
+
+ATHLETE
+- athlete_id
+- name
+- age
+- sport
+- team
+- position
+
+SESSION
+- session_id
+- athlete_id
+- session_date
+- session_type
+- observation
+- analysis_json
+
+Human observations and AI-generated interpretations are deliberately stored separately.
+
+Historical AI hypotheses are not automatically supplied to the model as evidence in future analyses. This prevents model-generated speculation from recursively becoming treated as fact.
+
+### Longitudinal Context Flow
+
+Selected Athlete
+→ Retrieve prior human observations
+→ Apply temporal filtering
+→ Format evidence with explicit provenance
+→ Combine historical evidence with current observation
+→ Claude structured analysis
+→ Save current human observation and AI analysis separately
+
+### Current Limitations
+
+- Same-day sessions are ordered by database insertion rather than actual event time.
+- Historical context currently includes all qualifying prior human observations rather than selecting observations by relevance.
+- SQLite is appropriate for prototype development but is not the intended production persistence layer.
+- AI reasoning still requires evaluation for unsupported specificity, confidence calibration, mechanical prescriptions, and subjective-to-objective evidence drift.
+
+### Key Product Principle
+
+Persistent memory is not the same as model context.
+
+The application controls which stored information becomes evidence for each AI analysis rather than relying on the model to remember prior interactions.
 
 12. Future Multimodal Capability
 A later version may accept video from games or practices.
@@ -239,13 +290,8 @@ Automatically treat AI-generated hypotheses as facts
 Optimize youth athletes solely around performance at the expense of development or enjoyment
 
 16. Roadmap
-v0.1 — AI Reasoning Prototype — Complete
-Natural-language observation input, structured Claude analysis, Pydantic schema, Streamlit UI, confidence handling, cross-sport testing.
-v0.2 — Athlete History
-Persistent athlete profiles and sessions, longitudinal evidence, hypothesis tracking, and historical context.
-v0.3 — Evaluation Framework
-Formal reusable test cases, expected behavior criteria, regression testing, and systematic prompt/model evaluation.
-v0.4 — Multimodal Evidence
-Video/image input and structured visual observations feeding the existing evidence pipeline.
-v1.0 — Portfolio-Ready Product
-Refined UX, persistent data, robust evaluations, deployed application, documentation, GitHub repository, screenshots/demo, and technical/product case study.
+- v0.1 — AI Reasoning Prototype — Complete
+- v0.2 — Athlete History & Longitudinal Reasoning — Complete
+- v0.3 — Evaluation Framework — Next
+- v0.4 — Multimodal Evidence
+- v1.0 — Portfolio-Ready Product

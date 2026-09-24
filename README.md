@@ -4,6 +4,17 @@ An AI-powered youth sports development tool that turns parent and coach observat
 
 Rather than jumping from a single observation to a diagnosis, the system separates observed facts from inference, maintains competing hypotheses, communicates uncertainty, and identifies what evidence to collect next.
 
+## Product Demo
+
+### 1. Add Athlete Context
+![Athlete profile](screenshots/athlete-profile.png)
+
+### 2. Capture a Game or Practice Observation
+![Session observation](screenshots/session-observation.png)
+
+### 3. Generate Evidence-Aware Development Guidance
+![Development analysis](screenshots/development-analysis.png)
+
 ## Why I Built It
 
 Parents and youth coaches often recognize that something changed in an athlete's performance without having enough evidence to know why.

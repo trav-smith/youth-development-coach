@@ -564,6 +564,40 @@ def save_session(
     return response.data[0]["session_id"]
 
 
+# FIELD-TEST ACCESS CONTROL
+# ============================================================
+
+import hmac
+
+
+def require_password():
+    if st.session_state.get("authenticated", False):
+        return
+
+    st.title("Youth Development Coach")
+    st.write("Enter the field-test password to continue.")
+
+    password = st.text_input(
+        "Password",
+        type="password"
+    )
+
+    if st.button("Sign in"):
+        if hmac.compare_digest(
+            password,
+            st.secrets["APP_PASSWORD"]
+        ):
+            st.session_state["authenticated"] = True
+            st.rerun()
+        else:
+            st.error("Incorrect password.")
+
+    st.stop()
+
+
+require_password()
+
+
 st.set_page_config(
     page_title="Youth Development Coach",
     page_icon="🏅",

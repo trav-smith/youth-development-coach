@@ -41,20 +41,30 @@ Youth Development Coach explores a different AI product pattern:
 
 The goal is not to replace a coach. It is to help a coach maintain a better evidence trail, reason across observations over time, and avoid turning a plausible explanation into a premature conclusion.
 
-## Current Prototype — v0.4
+## Current Prototype — v0.5
 
-The current prototype separates **evidence capture** from **AI analysis**.
+v0.5 moves the prototype from a local development environment to an independently deployed, persistent field-test application.
+
+The application is deployed through Streamlit Community Cloud, uses Supabase Postgres for hosted athlete and observation persistence, and supports password-protected remote access.
+
+The deployed workflow has been validated from a mobile browser, including voice capture, speech-to-text transcription, editable transcript review, and persistent observation storage.
 
 ### On-field capture
 
 The coach can:
 
-- Select an athlete
-- Record a quick voice observation
+- Select or create an athlete
+- Record a quick voice observation from a phone or browser
 - Automatically transcribe the recording
 - Review or edit the transcript
 - Save the observation immediately
 - Continue capturing additional observations without waiting for AI analysis
+
+### Persistent athlete history
+
+Athlete profiles and observations are stored in hosted Postgres rather than in the application runtime.
+
+This allows athlete history to persist across application restarts and makes the field-test application usable remotely without requiring a development machine, Colab session, or temporary tunnel to remain active.
 
 ### Post-session reasoning
 
@@ -81,7 +91,7 @@ flowchart LR
     A[Coach] --> B[Voice or Text Capture]
     B --> C[Speech-to-Text]
     C --> D[Editable Observation]
-    D --> E[(SQLite Athlete History)]
+    D --> E[(Supabase Postgres)]
 
     E --> F[Longitudinal Evidence Retrieval]
     F --> G[Claude Reasoning Engine]
@@ -89,6 +99,20 @@ flowchart LR
     H --> I[Deterministic Guardrails]
     I --> J[Development Analysis]
 ```
+
+### Deployment architecture
+
+```mermaid
+flowchart LR
+    A[Coach Browser / Phone] --> B[Streamlit Community Cloud]
+    B --> C[(Supabase Postgres)]
+    B --> D[OpenAI Speech-to-Text]
+    B --> E[Claude Reasoning Engine]
+```
+
+API credentials and database credentials are stored as server-side secrets rather than committed to the GitHub repository.
+
+The field-test application also includes password-based access control before exposing athlete information or application functionality.
 
 ### Evidence and inference are intentionally separate
 
@@ -162,7 +186,7 @@ The first prototype analyzed every observation immediately.
 
 That interaction was poorly suited to an actual coach on the field.
 
-v0.4 separates the workflow:
+v0.4 separated the workflow:
 
 **Select athlete → Speak → Review transcript → Save evidence**
 
@@ -171,6 +195,14 @@ from:
 **Review accumulated evidence → Generate Development Analysis**
 
 This keeps capture fast and prevents AI latency from interrupting coaching.
+
+### Persistence belongs outside the application runtime
+
+The original prototype stored athlete history in SQLite during development.
+
+v0.5 moves persistence to hosted Postgres so the athlete's longitudinal record is independent of the Streamlit process, Colab runtime, and developer machine.
+
+This makes remote field testing possible while preserving the existing evidence model.
 
 ### Human evidence ≠ AI inference
 
@@ -190,13 +222,13 @@ The system therefore treats uncertainty as an architectural concern, not merely 
 
 - Python
 - Streamlit
+- Streamlit Community Cloud
+- Supabase Postgres
 - Anthropic API / Claude
 - OpenAI speech-to-text
 - Pydantic
-- SQLite
-- Google Colab
-- Google Drive
 - GitHub
+- Google Colab and Google Drive for development
 
 ## Development Progress
 
@@ -212,13 +244,31 @@ Reusable behavioral evaluations, stricter evidence-grounding rules, uncertainty 
 ### v0.4 — Voice-First Evidence Capture — Complete
 On-field audio capture, speech-to-text transcription, editable review, rapid evidence persistence, and post-session longitudinal analysis.
 
+### v0.5 — Independent Deployment — Complete
+Migrated persistence from local SQLite to hosted Supabase Postgres, deployed the application independently through Streamlit Community Cloud, moved credentials to server-side secrets, added field-test access control, and validated the complete voice-to-persistent-evidence workflow from a mobile browser.
+
 ## Future Exploration
 
-### Field Testing
-Test the capture workflow with youth coaches during real practices to evaluate whether voice capture is fast and unobtrusive enough for actual field use.
+### Coach Field Testing
+Put the independently deployed application in the hands of a youth coach during real practices and games.
 
-### Structured Performance Data
-Add box scores and other structured performance data as distinct evidence sources with explicit provenance.
+Evaluate:
+
+- Whether voice capture is fast and unobtrusive enough during coaching
+- When observations are actually recorded
+- Whether coaches review Development Analysis during or after sessions
+- Which recommendations and tracking prompts are useful
+- Where the workflow creates friction
+- Which evidence sources coaches naturally want to add
+
+### Structured Game Evidence
+Add scorecards, box scores, and similar game records as distinct evidence sources with explicit provenance.
+
+A likely workflow is:
+
+**Upload game record → Extract structured evidence → Human review/correction → Save verified evidence → Longitudinal reasoning**
+
+The goal is not to treat model extraction as ground truth. Extracted performance data should remain reviewable and distinguishable from coach observations and AI-generated hypotheses.
 
 ### Multimodal Evidence
 Explore video as another evidence source rather than as an automatic diagnosis engine:
@@ -229,6 +279,11 @@ A related tennis prototype can test whether whole-match video provides useful ev
 
 ### Curated Coaching Knowledge
 Separate athlete-specific reasoning from retrieval of vetted coaching guidance so recommendations can incorporate age-, sport-, and topic-appropriate knowledge without confusing general coaching guidance with evidence about a specific athlete.
+
+### Production Identity & Authorization
+The current password gate is appropriate for limited field testing but is not intended to be a full production identity system.
+
+Future versions can introduce individual user accounts, team-level authorization, and stronger access controls if broader use warrants them.
 
 ## What This Project Explores
 
@@ -244,6 +299,7 @@ The project focuses on:
 - LLM evaluation
 - Deterministic guardrails around probabilistic systems
 - Voice as a low-friction field interface
+- Persistent cloud-backed evidence
 - Designing AI to support expert judgment rather than replace it
 
 ## Documentation
@@ -252,4 +308,4 @@ See [`docs/PRD.md`](docs/PRD.md) for the product requirements document.
 
 ---
 
-**Status:** v0.4 prototype complete — voice-first evidence capture, persistent athlete history, longitudinal AI reasoning, evaluation framework, and deterministic reasoning guardrails.
+**Status:** v0.5 independently deployed field-test prototype — mobile voice capture, persistent Supabase athlete history, longitudinal AI reasoning, evaluation framework, deterministic reasoning guardrails, and password-protected remote access.

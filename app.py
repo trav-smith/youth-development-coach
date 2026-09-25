@@ -430,151 +430,97 @@ def transcribe_audio(audio_file):
     return transcription.text.strip()
 
 
-# DATABASE — v0.2 Athlete History
+# DATABASE — v0.5 Supabase
 # ============================================================
 
-import sqlite3
-import os
+from supabase import create_client
 
-DB_FILE = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "youth_coach.db"
+supabase = create_client(
+    st.secrets["SUPABASE_URL"],
+    st.secrets["SUPABASE_SECRET_KEY"]
 )
 
 
-def init_database():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS athletes (
-        athlete_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        age INTEGER,
-        sport TEXT NOT NULL,
-        team TEXT,
-        position TEXT
-    )
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS sessions (
-        session_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        athlete_id INTEGER NOT NULL,
-        session_date TEXT NOT NULL,
-        session_type TEXT NOT NULL,
-        observation TEXT NOT NULL,
-        analysis_json TEXT,
-        FOREIGN KEY (athlete_id) REFERENCES athletes (athlete_id)
-    )
-    """)
-
-    conn.commit()
-    conn.close()
-
-
-init_database()
-
-
 def create_athlete(name, age, sport, team=None, position=None):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    INSERT INTO athletes (
-        name,
-        age,
-        sport,
-        team,
-        position
+    response = (
+        supabase.table("athletes")
+        .insert({
+            "name": name,
+            "age": age,
+            "sport": sport,
+            "team": team,
+            "position": position
+        })
+        .execute()
     )
-    VALUES (?, ?, ?, ?, ?)
-    """, (
-        name,
-        age,
-        sport,
-        team,
-        position
-    ))
 
-    athlete_id = cursor.lastrowid
-
-    conn.commit()
-    conn.close()
-
-    return athlete_id
+    return response.data[0]["athlete_id"]
 
 
 def get_athletes():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
+    response = (
+        supabase.table("athletes")
+        .select("athlete_id,name,age,sport,team,position")
+        .order("name")
+        .execute()
+    )
 
-    cursor.execute("""
-    SELECT
-        athlete_id,
-        name,
-        age,
-        sport,
-        team,
-        position
-    FROM athletes
-    ORDER BY name
-    """)
-
-    athletes = cursor.fetchall()
-    conn.close()
-
-    return athletes
-
-
-
+    return [
+        (
+            row["athlete_id"],
+            row["name"],
+            row["age"],
+            row["sport"],
+            row["team"],
+            row["position"]
+        )
+        for row in response.data
+    ]
 
 
 def get_session_history(athlete_id):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
+    response = (
+        supabase.table("sessions")
+        .select(
+            "session_id,session_date,session_type,observation,analysis_json"
+        )
+        .eq("athlete_id", athlete_id)
+        .order("session_date", desc=True)
+        .order("session_id", desc=True)
+        .execute()
+    )
 
-    cursor.execute("""
-    SELECT
-        session_id,
-        session_date,
-        session_type,
-        observation,
-        analysis_json
-    FROM sessions
-    WHERE athlete_id = ?
-    ORDER BY session_date DESC, session_id DESC
-    """, (athlete_id,))
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    return rows
+    return [
+        (
+            row["session_id"],
+            row["session_date"],
+            row["session_type"],
+            row["observation"],
+            row["analysis_json"]
+        )
+        for row in response.data
+    ]
 
 
 def get_athlete_history(athlete_id, through_date):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
+    response = (
+        supabase.table("sessions")
+        .select("session_date,session_type,observation")
+        .eq("athlete_id", athlete_id)
+        .lte("session_date", str(through_date))
+        .order("session_date")
+        .order("session_id")
+        .execute()
+    )
 
-    cursor.execute("""
-    SELECT
-        session_date,
-        session_type,
-        observation
-    FROM sessions
-    WHERE athlete_id = ?
-      AND session_date <= ?
-    ORDER BY session_date ASC, session_id ASC
-    """, (
-        athlete_id,
-        str(through_date)
-    ))
-
-    rows = cursor.fetchall()
-    conn.close()
-
-    return rows
-
+    return [
+        (
+            row["session_date"],
+            row["session_type"],
+            row["observation"]
+        )
+        for row in response.data
+    ]
 
 
 def format_history_for_ai(history):
@@ -603,32 +549,19 @@ def save_session(
     observation,
     analysis_json=None
 ):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    INSERT INTO sessions (
-        athlete_id,
-        session_date,
-        session_type,
-        observation,
-        analysis_json
+    response = (
+        supabase.table("sessions")
+        .insert({
+            "athlete_id": athlete_id,
+            "session_date": str(session_date),
+            "session_type": session_type,
+            "observation": observation,
+            "analysis_json": analysis_json
+        })
+        .execute()
     )
-    VALUES (?, ?, ?, ?, ?)
-    """, (
-        athlete_id,
-        session_date,
-        session_type,
-        observation,
-        analysis_json
-    ))
 
-    session_id = cursor.lastrowid
-
-    conn.commit()
-    conn.close()
-
-    return session_id
+    return response.data[0]["session_id"]
 
 
 st.set_page_config(

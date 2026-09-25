@@ -1,10 +1,10 @@
 # Youth Development Coach
 ## Product Requirements Document
 
-**Version:** 0.1  
-**Status:** Working Prototype  
+**Version:** 0.4  
+**Status:** Prototype Complete  
 **Product:** AI Sports Labs  
-**Last Updated:** September 24, 2026
+**Last Updated:** September 25, 2026
 
 1. Product Overview
 Youth Development Coach is an AI-powered tool that helps parents and coaches turn observations from youth sports games and practices into structured, evidence-aware development guidance.
@@ -26,10 +26,16 @@ Possible explanations could include timing, pitch recognition, velocity, mechani
 A useful development tool should not automatically select one explanation. It should help the user determine what is known, what is possible, and what evidence would distinguish among those possibilities.
 
 3. Target Users
-Primary user: Parent of a youth athlete who wants to support development without requiring professional-level coaching expertise.
-Secondary user: Youth coach seeking a structured way to record observations, identify development priorities, and monitor patterns across sessions.
+
+Primary user: Youth coach seeking a low-friction way to capture athlete observations during games and practices, maintain a longitudinal development record, and reason across evidence over time.
+
+Secondary user: Parent of a youth athlete who wants to support development while avoiding premature conclusions from isolated performances.
+
 Athlete: Youth athlete approximately ages 5–18 participating in organized or recreational sports.
-The initial product is designed to be sport-general rather than tied to a single sport.
+
+The initial reasoning architecture is designed to be sport-general rather than tied to a single sport. Baseball is the primary workflow context for the current coach-facing prototype, with tennis used as a secondary test of cross-sport generalization.
+
+The product is intended to support — not replace — the judgment of coaches, parents, and athletes.
 
 4. Product Principles
 Evidence before diagnosis
@@ -48,28 +54,68 @@ AI output requires evaluation
 Structured output does not guarantee correct reasoning. Model behavior must be tested for unsupported inference, invented details, overconfidence, and inappropriate recommendations.
 
 5. Core User Journey
-Step 1 — Identify athlete
-User provides basic athlete context:
-Name or nickname
-Age
-Sport
-Team, optional
-Position or role, optional
-Step 2 — Describe session
-User identifies whether the observation occurred during a game or practice and describes what they observed in natural language.
-Step 3 — AI analysis
-The system evaluates the observation while distinguishing reported evidence from inference.
-Step 4 — Structured development guidance
+
+Step 1 — Select athlete
+
+The coach selects an existing athlete or creates a new athlete profile containing:
+- Name or nickname
+- Age
+- Sport
+- Team, optional
+- Position or role, optional
+
+Step 2 — Capture observation
+
+During a game or practice, the coach records a quick voice note or enters an observation as text.
+
+For voice capture:
+- The coach records the observation in the Streamlit interface.
+- Speech-to-text converts the recording into a transcript.
+- The transcript remains editable so the coach can verify or correct it before saving.
+
+Step 3 — Save evidence
+
+The reviewed observation is saved immediately to the athlete's longitudinal history.
+
+Saving evidence does not require AI analysis.
+
+This separation allows the coach to capture multiple observations without waiting for the reasoning model and preserves the human-reported evidence before interpretation.
+
+Step 4 — Review athlete history
+
+Saved game and practice observations accumulate chronologically in the athlete's persistent record.
+
+The coach can review this history independently of AI-generated analysis.
+
+Step 5 — Generate Development Analysis
+
+When useful, the coach requests a Development Analysis across the athlete's accumulated human-reported evidence.
+
+The reasoning engine looks for:
+- Repeated patterns
+- Contradictory evidence
+- Context-specific differences
+- Evidence that strengthens or weakens hypotheses
+- Changes or adjustments over time
+
+Step 6 — Receive structured guidance
+
 The user receives:
-Observed
-Possible Explanations
-Development Priorities
-Next Practice
-Coaching Cues
-What to Track Next
-Overall Confidence
-Step 5 — Future evidence
-Future versions store subsequent sessions and use accumulated evidence to update hypotheses and confidence over time.
+- Observed
+- Possible Explanations
+- Development Priorities
+- Next Practice
+- Coaching Cues
+- What to Track Next
+- Overall Confidence
+
+Step 7 — Continue the evidence loop
+
+Future observations are added to the athlete record and can strengthen, weaken, contradict, or leave unresolved earlier explanations.
+
+The intended loop is:
+
+Capture → Preserve Evidence → Analyze → Track → Capture Again
 
 6. v0.1 — Working Prototype
 Status: Implemented
@@ -245,7 +291,185 @@ Persistent memory is not the same as model context.
 
 The application controls which stored information becomes evidence for each AI analysis rather than relying on the model to remember prior interactions.
 
-12. Future Multimodal Capability
+12. v0.3 — Evaluation Framework & Reasoning Guardrails
+
+### Status
+Complete
+
+### Objective
+Move from manual inspection of plausible-looking AI responses to repeatable evaluation of reasoning behavior and enforce critical product invariants that prompt instructions alone cannot reliably guarantee.
+
+### Evaluation Framework
+
+The prototype includes reusable evaluation cases representing different sports, evidence conditions, and known model failure modes.
+
+Each case contains:
+- Athlete context
+- Current human-reported observation
+- Relevant prior human-reported evidence
+- Behavioral evaluation criteria
+
+The evaluation system generates a structured development analysis and then evaluates the response against explicit PASS/FAIL criteria.
+
+An LLM judge provides repeatable evaluation of behavioral criteria and a rationale for each result. The LLM judge is treated as an evaluation aid rather than ground truth.
+
+### Core Evaluation Behaviors
+
+Evaluation criteria include:
+- No unsupported mechanical diagnosis
+- No unsupported psychological diagnosis
+- Hypotheses grounded in athlete-specific evidence
+- Appropriate abstention when causal evidence is insufficient
+- Preservation of contradictory evidence
+- Preservation of subjective-report provenance
+- Confidence calibrated to evidence quality
+- No invented facts, measurements, repetitions, or history
+- No unsupported mechanical correction
+- Requests for evidence that can distinguish among explanations
+- Constructive, age-appropriate recommendations
+
+### Evidence-Grounding Rules
+
+v0.3 strengthened the reasoning policy with several additional requirements:
+
+1. Every causal hypothesis must be supported by athlete-specific evidence.
+2. A theoretically possible cause is not automatically an evidence-supported hypothesis.
+3. When only an outcome is known, the system may return no causal hypothesis rather than inventing one.
+4. Contextual contrasts can support cautious, low-confidence hypotheses when the athlete's own history provides evidence for the contrast.
+5. Subjective reports must retain their original provenance.
+6. Unknown provenance must remain unknown.
+7. Uncertainty must propagate into development priorities, recommendations, and coaching cues.
+
+### Deterministic Guardrail
+
+Prompt instructions alone were not sufficient to enforce every reasoning invariant.
+
+The application therefore applies deterministic post-processing after structured model generation.
+
+The core invariant is:
+
+**A causal development priority cannot exist unless it traces back to an evidence-supported hypothesis.**
+
+Development priorities with invalid hypothesis relationships are removed.
+
+Practice recommendations and coaching cues must similarly trace to valid development priorities.
+
+This provides a structural backstop around probabilistic model behavior.
+
+### Validated Evaluation Cases
+
+The v0.3 evaluation suite includes baseball and tennis scenarios designed around previously observed model failure modes.
+
+Final regression runs passed all defined criteria for both initial evaluation cases.
+
+The purpose of these tests is not to prove that the model is always correct. They demonstrate that known reasoning failures can be represented as repeatable product requirements and tested after changes to the system.
+
+13. v0.4 — Voice-First Evidence Capture & Post-Session Analysis
+
+### Status
+Complete
+
+### Objective
+Redesign observation capture around the real environment of a youth coach.
+
+The earlier prototype treated each observation as the beginning of an AI-analysis interaction. That created unnecessary friction for a coach who may need to record several observations while actively running a practice or game.
+
+v0.4 separates rapid evidence capture from longitudinal AI reasoning.
+
+### Capture-First Workflow
+
+The on-field workflow is:
+
+Select Athlete
+→ Record Voice Note
+→ Transcribe
+→ Review/Edit
+→ Save Observation
+→ Ready for Next Observation
+
+AI analysis is not required during this workflow.
+
+The coach can capture evidence quickly and continue coaching without waiting for the reasoning model.
+
+### Voice Transcription
+
+The application uses Streamlit's native audio input for recording and OpenAI speech-to-text for transcription.
+
+The transcript is presented as an editable observation before persistence.
+
+The original design principle remains unchanged:
+
+**Human-provided evidence should be preserved before AI interpretation.**
+
+Voice is therefore treated as an input mechanism rather than an additional reasoning source.
+
+### Capture Reset
+
+After a successful save:
+- The observation is persisted to the selected athlete's history.
+- The audio recorder resets.
+- The transcript field clears.
+- The interface is immediately ready for another observation.
+
+This supports repeated capture during a game or practice.
+
+### Post-Session Development Analysis
+
+AI reasoning is now a separate user action.
+
+The coach can request a Development Analysis across the athlete's accumulated human-reported observation history.
+
+The analysis considers the evidence chronologically and looks for:
+- Repeated patterns
+- Contradictions
+- Context-specific differences
+- Evidence that strengthens or weakens hypotheses
+- Changes or adjustments over time
+
+The same structured output schema, evidence-grounding policy, and deterministic guardrails introduced in earlier versions remain in effect.
+
+### Analysis Persistence
+
+Whole-history Development Analysis is currently generated on demand and is not attached to an individual session.
+
+This is intentional.
+
+A longitudinal analysis represents reasoning across multiple observations, so storing it as though it belonged to the most recent observation would misrepresent its provenance.
+
+A future version may introduce a separate assessment entity for persistent longitudinal analyses.
+
+### Validated End-to-End Flow
+
+The v0.4 prototype has validated the following workflow:
+
+Voice Observation
+→ Speech-to-Text
+→ Human Review
+→ Save Human-Reported Evidence
+→ Persistent Athlete History
+→ Longitudinal Evidence Retrieval
+→ Structured AI Reasoning
+→ Deterministic Guardrails
+→ Development Analysis
+
+Generating a Development Analysis does not create a new observation or alter the athlete's evidence history.
+
+### Product Insight
+
+Voice capture is not itself the core product differentiator.
+
+Its value is reducing the friction required to build a useful longitudinal evidence record.
+
+The differentiated product behavior is the system's treatment of:
+- Evidence provenance
+- Uncertainty
+- Contradictory observations
+- Longitudinal patterns
+- Abstention
+- Separation of human evidence from AI inference
+- Guardrails between hypotheses and interventions
+
+14. Future Multimodal Capability
 A later version may accept video from games or practices.
 Potential flow:
 Video → Vision Analysis → Structured Observations → Existing Reasoning Pipeline
@@ -258,7 +482,7 @@ Supporting or contradicting parent-reported observations
 Tracking visible changes over time
 Multimodal analysis should not imply precision beyond what the video quality, camera angle, frame rate, and model capabilities can support.
 
-13. Evaluation Strategy
+15. Evaluation Strategy
 The product should maintain a repeatable set of test scenarios covering multiple sports and evidence conditions.
 Evaluation dimensions should include:
 Observation fidelity: Did the system preserve what was actually reported?
@@ -267,9 +491,9 @@ Confidence calibration: Does confidence appropriately reflect evidence quality a
 Unsupported specificity: Did the system invent measurements, repetitions, timelines, or history?
 Recommendation safety: Are recommendations appropriate given uncertainty?
 Cross-sport generalization: Does the reasoning framework work without sport-specific hard-coding?
-Longitudinal reasoning: In future versions, does new evidence appropriately strengthen, weaken, or preserve existing hypotheses?
+Longitudinal reasoning: Does new evidence appropriately strengthen, weaken, contradict, or leave unresolved existing hypotheses?
 
-14. Success Criteria
+16. Success Criteria
 The product succeeds when a parent or coach can enter a simple observation and receive guidance that is:
 More structured than a generic chatbot response
 Explicit about uncertainty
@@ -279,7 +503,7 @@ Capable of improving as evidence accumulates
 Applicable across multiple youth sports
 Technical success requires reliable structured output, secure API usage, persistent athlete/session data, repeatable evaluation, and a deployable user interface.
 
-15. Non-Goals
+17. Non-Goals
 The product is not intended to:
 Replace a qualified sport-specific coach
 Provide medical diagnosis or injury assessment
@@ -289,9 +513,40 @@ Guarantee athletic performance improvements
 Automatically treat AI-generated hypotheses as facts
 Optimize youth athletes solely around performance at the expense of development or enjoyment
 
-16. Roadmap
-- v0.1 — AI Reasoning Prototype — Complete
-- v0.2 — Athlete History & Longitudinal Reasoning — Complete
-- v0.3 — Evaluation Framework — Next
-- v0.4 — Multimodal Evidence
-- v1.0 — Portfolio-Ready Product
+18. Roadmap
+
+### Completed
+
+- v0.1 — Structured AI Reasoning
+- v0.2 — Athlete History & Longitudinal Reasoning
+- v0.3 — Evaluation Framework & Reasoning Guardrails
+- v0.4 — Voice-First Evidence Capture & Post-Session Analysis
+
+### Next Product Validation
+
+- Conduct field testing with youth coaches during real practices
+- Measure whether voice capture is fast and unobtrusive enough for live coaching
+- Identify friction in athlete selection, recording, transcript review, and repeated observation capture
+- Evaluate whether coaches find the resulting longitudinal record useful enough to maintain over time
+
+### Future Evidence Sources
+
+- Structured game statistics and box-score data
+- Video-derived observations with explicit provenance and confidence
+- Human review of automatically extracted evidence before it enters the athlete record
+- Curated coaching knowledge retrieval separated from athlete-specific evidence
+
+### Multimodal Extension
+
+A future lab will explore tennis match video as a multimodal extension of the reasoning architecture developed here.
+
+The intended architecture is:
+
+Video
+→ Event Detection
+→ Structured Visual Observations
+→ Human Review
+→ Athlete Evidence Record
+→ Longitudinal Reasoning
+
+The objective is not to recreate specialized sports-video analytics products, but to test how externally generated or model-generated evidence can safely enter an evidence-aware longitudinal reasoning system.
